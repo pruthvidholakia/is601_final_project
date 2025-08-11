@@ -1,0 +1,227 @@
+{% extends "layout.html" %}
+{% block title %}Profile{% endblock %}
+
+{% block content %}
+<!-- Error/Success Alerts -->
+<div id="errorAlert" class="hidden bg-red-100 border border-red-500 text-red-800 px-4 py-3 rounded-md mb-4">
+    <div class="flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+                d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z"
+                clip-rule="evenodd"></path>
+        </svg>
+        <span id="errorMessage"></span>
+    </div>
+</div>
+<div id="successAlert" class="hidden bg-green-100 border border-green-500 text-green-800 px-4 py-3 rounded-md mb-4">
+    <div class="flex items-center">
+        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+            <path fill-rule="evenodd"
+                d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                clip-rule="evenodd"></path>
+        </svg>
+        <span id="successMessage"></span>
+    </div>
+</div>
+
+<!-- Loading State -->
+<div id="loadingState" class="bg-white shadow-lg rounded-lg p-6 flex justify-center items-center min-h-[300px]">
+    <div class="flex flex-col items-center">
+        <svg class="animate-spin h-10 w-10 text-blue-700 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+            viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor"
+                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z">
+            </path>
+        </svg>
+        <p class="text-gray-600">Loading profile...</p>
+    </div>
+</div>
+
+<!-- Edit Profile Card -->
+<div id="editCard" class="hidden max-w-2xl mx-auto bg-white shadow rounded-lg p-6 space-y-6 border border-gray-100">
+    <div>
+        <h1 class="text-2xl font-bold text-gray-900">Update Profile</h1>
+        <p class="text-gray-500 text-sm">Edit your account details below.</p>
+    </div>
+
+    <form id="profileForm" class="space-y-4" autocomplete="off">
+        <div>
+            <label class="block text-sm font-medium text-gray-700">First name</label>
+            <input id="first_name" type="text"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                required>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Last name</label>
+            <input id="last_name" type="text"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                required>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Email</label>
+            <input id="email" type="email"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                required>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">Username</label>
+            <input id="username" type="text"
+                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:ring-indigo-500 focus:border-indigo-500"
+                required>
+        </div>
+
+        <div class="flex items-center gap-3">
+            <button type="submit"
+                class="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white font-semibold hover:bg-indigo-700 disabled:opacity-50">
+                Save changes
+            </button>
+            <button type="button" id="cancelBtn"
+                class="inline-flex items-center px-4 py-2 rounded-md bg-gray-400 text-white font-semibold hover:bg-gray-500">
+                Cancel
+            </button>
+            <span id="statusMsg" class="text-sm"></span>
+        </div>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        // --- Auth helpers (avoid "Bearer Bearer ..." bug) ---
+        function rawToken() {
+            const t = localStorage.getItem('access_token') || localStorage.getItem('token') || '';
+            return t.startsWith('Bearer ') ? t.slice(7) : t;
+        }
+        function authHeader() {
+            const t = rawToken();
+            return t ? { 'Authorization': `Bearer ${t}` } : {};
+        }
+
+        // --- Alert helpers (same pattern as edit_calculation) ---
+        function showError(message) {
+            const box = document.getElementById('errorAlert');
+            const msg = document.getElementById('errorMessage');
+            msg.textContent = message;
+            box.classList.remove('hidden');
+            setTimeout(() => { box.classList.add('hidden'); }, 4000);
+        }
+        function showSuccess(message) {
+            const box = document.getElementById('successAlert');
+            const msg = document.getElementById('successMessage');
+            msg.textContent = message;
+            box.classList.remove('hidden');
+            setTimeout(() => { box.classList.add('hidden'); }, 3000);
+        }
+        function setStatus(text, ok = true) {
+            const el = document.getElementById('statusMsg');
+            el.textContent = text || '';
+            el.className = ok ? 'text-green-600 text-sm' : 'text-red-600 text-sm';
+        }
+
+        // --- Redirect if not logged in ---
+        if (!rawToken()) {
+            window.location.href = '/login';
+            return;
+        }
+
+        // --- Elements ---
+        const loading = document.getElementById('loadingState');
+        const card = document.getElementById('editCard');
+
+        const firstName = document.getElementById('first_name');
+        const lastName = document.getElementById('last_name');
+        const email = document.getElementById('email');
+        const username = document.getElementById('username');
+
+        // --- API calls ---
+        async function getMe() {
+            const res = await fetch('/user/me', { headers: authHeader() });
+            if (!res.ok) {
+                const text = await res.text().catch(() => '');
+                throw new Error(`GET /user/me failed (${res.status}). ${text}`);
+            }
+            return res.json();
+        }
+
+        async function updateMe(payload) {
+            const res = await fetch('/user/profile', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', ...authHeader() },
+                body: JSON.stringify(payload)
+            });
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.detail || `Update failed (${res.status})`);
+            }
+            return res.json();
+        }
+
+        // --- Load profile (like loadCalculation) ---
+        async function loadProfile() {
+            try {
+                loading.classList.remove('hidden');
+                card.classList.add('hidden');
+
+                const me = await getMe();
+
+                firstName.value = me.first_name ?? '';
+                lastName.value = me.last_name ?? '';
+                email.value = me.email ?? '';
+                username.value = me.username ?? '';
+
+                loading.classList.add('hidden');
+                card.classList.remove('hidden');
+            } catch (e) {
+                loading.classList.add('hidden');
+                showError(e.message || 'Failed to load profile');
+            }
+        }
+
+        // --- Save handler (like edit form submit) ---
+        document.getElementById('profileForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const btn = e.target.querySelector('button[type="submit"]');
+            const original = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Saving...';
+
+            const payload = {
+                first_name: firstName.value.trim(),
+                last_name: lastName.value.trim(),
+                email: email.value.trim(),
+                username: username.value.trim(),
+            };
+
+            try {
+                const updated = await updateMe(payload);
+                setStatus('Profile updated ✔');
+                showSuccess('Profile updated successfully!');
+                localStorage.setItem('username', updated.username || payload.username);
+                setTimeout(() => {
+                    window.location.href = '/dashboard';
+                }, 800); // short delay so user sees the success
+            } catch (e2) {
+                setStatus(e2.message || 'Update failed', false);
+                showError(e2.message || 'Update failed');
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = original;
+            }
+        });
+
+        // -- Cancel Btn Handel --
+        document.getElementById('cancelBtn').addEventListener('click', () => {
+            window.location.href = '/dashboard';
+        });
+
+        // go!
+        loadProfile();
+    });
+</script>
+{% endblock %}

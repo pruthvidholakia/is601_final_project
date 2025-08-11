@@ -1,0 +1,15 @@
+[run]
+branch = True
+parallel = True
+concurrency = multiprocessing,thread
+# pytest-cov will still include tests; omit if you want
+# omit = tests/*
+
+[paths]
+source =
+    app
+    */app
+
+[report]
+show_missing = True
+skip_covered = False

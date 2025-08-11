@@ -10,7 +10,7 @@ The application leverages **SQLAlchemy** for database management and follows bes
 - **Securely change passwords** with hashing.
 - Integrated **form validation**, **database updates**, and **real-time UI feedback**.
 
-### 🛠 Tech Stack & Tools
+### Tech Stack & Tools
 - **FastAPI** for backend API development.
 - **SQLAlchemy** for ORM and database management.
 - **Docker** for containerized deployment.
